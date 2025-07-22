@@ -70,7 +70,7 @@ func Migrate(db *gorm.DB) error {
 func addIndexes(db *gorm.DB) error {
 	indexes := []string{
 		"CREATE INDEX IF NOT EXISTS idx_users_email_active ON users(email) WHERE is_active = true",
-		"CREATE INDEX IF NOT EXISTS idx_oauth_accounts_provider_user_id ON oauth_accounts(provider, provider_user_id)",
+		"CREATE INDEX IF NOT EXISTS idx_oauth_accounts_provider_id ON oauth_accounts(provider, provider_id)",
 		"CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id_active ON refresh_tokens(user_id) WHERE is_revoked = false",
 		"CREATE INDEX IF NOT EXISTS idx_refresh_tokens_expires_at ON refresh_tokens(expires_at)",
 	}

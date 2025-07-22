@@ -69,6 +69,8 @@ func main() {
 	// Initialize services
 	jwtService := services.NewJWTService(cfg)
 	authService := services.NewAuthService(cfg, userRepo, tokenRepo, jwtService)
+	oauthService := services.NewOAuthService(cfg, userRepo, authService)
+	authService.SetOAuthService(oauthService)
 
 	// Initialize handlers
 	authHandler := handlers.NewAuthHandler(authService)
@@ -114,6 +116,8 @@ func setupRoutes(r *gin.Engine, authHandler *handlers.AuthHandler, userHandler *
 				oauth.GET("/google/callback", authHandler.GoogleCallback)
 				oauth.GET("/github", authHandler.GitHubOAuth)
 				oauth.GET("/github/callback", authHandler.GitHubCallback)
+				oauth.GET("/microsoft", authHandler.MicrosoftOAuth)
+				oauth.GET("/microsoft/callback", authHandler.MicrosoftCallback)
 			}
 		}
 

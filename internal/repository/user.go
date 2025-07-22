@@ -57,7 +57,7 @@ func (r *UserRepository) GetByOAuthAccount(provider, providerUserID string) (*mo
 	var user models.User
 	if err := r.db.Preload("Roles.Permissions").
 		Joins("JOIN oauth_accounts ON users.id = oauth_accounts.user_id").
-		Where("oauth_accounts.provider = ? AND oauth_accounts.provider_user_id = ? AND users.is_active = ?", 
+		Where("oauth_accounts.provider = ? AND oauth_accounts.provider_id = ? AND users.is_active = ?", 
 			provider, providerUserID, true).
 		First(&user).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -180,15 +180,27 @@ func (r *UserRepository) UpdateOAuthAccount(oauthAccount *models.OAuthAccount) e
 }
 
 // GetOAuthAccount retrieves an OAuth account
-func (r *UserRepository) GetOAuthAccount(provider, providerUserID string) (*models.OAuthAccount, error) {
+func (r *UserRepository) GetOAuthAccount(provider, providerID string) (*models.OAuthAccount, error) {
 	var account models.OAuthAccount
-	if err := r.db.Where("provider = ? AND provider_user_id = ?", provider, providerUserID).First(&account).Error; err != nil {
+	if err := r.db.Where("provider = ? AND provider_id = ?", provider, providerID).First(&account).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
 			return nil, fmt.Errorf("OAuth account not found")
 		}
 		return nil, fmt.Errorf("failed to get OAuth account: %w", err)
 	}
 	return &account, nil
+}
+
+// AssignRoleByName assigns a role to a user by role name
+func (r *UserRepository) AssignRoleByName(userID uint, roleName string) error {
+	// Find the role by name
+	var role models.Role
+	if err := r.db.Where("name = ?", roleName).First(&role).Error; err != nil {
+		return fmt.Errorf("failed to find role '%s': %w", roleName, err)
+	}
+	
+	// Assign the role
+	return r.AssignRole(userID, role.ID, userID) // Self-assigned for OAuth registration
 }
 
 // permissionToScope converts a permission to OAuth scope format

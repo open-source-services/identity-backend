@@ -337,6 +337,59 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Microsoft OAuth Initiate",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/auth/oauth/microsoft",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"oauth",
+								"microsoft"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Microsoft OAuth Callback",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{BASE_URL}}/api/v1/auth/oauth/microsoft/callback?code=authorization_code&state=state_value",
+							"host": [
+								"{{BASE_URL}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"auth",
+								"oauth",
+								"microsoft",
+								"callback"
+							],
+							"query": [
+								{
+									"key": "code",
+									"value": "authorization_code"
+								},
+								{
+									"key": "state",
+									"value": "state_value"
+								}
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},

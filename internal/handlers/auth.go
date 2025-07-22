@@ -1,6 +1,9 @@
 package handlers
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -154,29 +157,225 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 // OAuth handlers (placeholder implementations)
 
 func (h *AuthHandler) GoogleOAuth(c *gin.Context) {
-	// TODO: Implement Google OAuth initiation
+	state := generateOAuthState()
+	
+	// Set cookie with explicit SameSite=Lax for OAuth redirects
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		MaxAge:   300, // 5 minutes
+		Path:     "/",
+		Domain:   "",
+		Secure:   false,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	
+	authURL := h.authService.OAuthService.GetGoogleAuthURL(state)
+	if authURL == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Google OAuth not configured",
+		})
+		return
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Google OAuth endpoint - to be implemented",
+		"auth_url": authURL,
 	})
 }
 
 func (h *AuthHandler) GoogleCallback(c *gin.Context) {
-	// TODO: Implement Google OAuth callback
+	// Verify state parameter
+	state := c.Query("state")
+	cookieState, err := c.Cookie("oauth_state")
+	
+	if err != nil || state != cookieState {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid state parameter",
+		})
+		return
+	}
+	
+	// Clear state cookie
+	c.SetCookie("oauth_state", "", -1, "/", "", false, true)
+	
+	// Get authorization code
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Authorization code not provided",
+		})
+		return
+	}
+	
+	// Handle OAuth callback
+	tokens, user, err := h.authService.OAuthService.HandleGoogleCallback(c.Request.Context(), code)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("OAuth authentication failed: %v", err),
+		})
+		return
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Google OAuth callback - to be implemented",
+		"message": "Login successful",
+		"user": gin.H{
+			"id":         user.ID,
+			"email":      user.Email,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+		},
+		"tokens": tokens,
 	})
 }
 
-func (h *AuthHandler) GitHubOAuth(c *gin.Context) {
-	// TODO: Implement GitHub OAuth initiation
+func (h *AuthHandler) MicrosoftOAuth(c *gin.Context) {
+	state := generateOAuthState()
+	
+	// Set cookie with explicit SameSite=Lax for OAuth redirects
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		MaxAge:   300, // 5 minutes
+		Path:     "/",
+		Domain:   "",
+		Secure:   false,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	
+	authURL := h.authService.OAuthService.GetMicrosoftAuthURL(state)
+	if authURL == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Microsoft OAuth not configured",
+		})
+		return
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
-		"message": "GitHub OAuth endpoint - to be implemented",
+		"auth_url": authURL,
+	})
+}
+
+func (h *AuthHandler) MicrosoftCallback(c *gin.Context) {
+	// Verify state parameter
+	state := c.Query("state")
+	cookieState, err := c.Cookie("oauth_state")
+	if err != nil || state != cookieState {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid state parameter",
+		})
+		return
+	}
+	
+	// Clear state cookie
+	c.SetCookie("oauth_state", "", -1, "/", "", false, true)
+	
+	// Get authorization code
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Authorization code not provided",
+		})
+		return
+	}
+	
+	// Handle OAuth callback
+	tokens, user, err := h.authService.OAuthService.HandleMicrosoftCallback(c.Request.Context(), code)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("OAuth authentication failed: %v", err),
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Login successful",
+		"user": gin.H{
+			"id":         user.ID,
+			"email":      user.Email,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+		},
+		"tokens": tokens,
+	})
+}
+
+// generateOAuthState generates a random state string for OAuth security
+func generateOAuthState() string {
+	bytes := make([]byte, 16)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
+func (h *AuthHandler) GitHubOAuth(c *gin.Context) {
+	state := generateOAuthState()
+	
+	// Set cookie with explicit SameSite=Lax for OAuth redirects
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "oauth_state",
+		Value:    state,
+		MaxAge:   300, // 5 minutes
+		Path:     "/",
+		Domain:   "",
+		Secure:   false,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	
+	authURL := h.authService.OAuthService.GetGitHubAuthURL(state)
+	if authURL == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "GitHub OAuth not configured",
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, gin.H{
+		"auth_url": authURL,
 	})
 }
 
 func (h *AuthHandler) GitHubCallback(c *gin.Context) {
-	// TODO: Implement GitHub OAuth callback
+	// Verify state parameter
+	state := c.Query("state")
+	cookieState, err := c.Cookie("oauth_state")
+	if err != nil || state != cookieState {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Invalid state parameter",
+		})
+		return
+	}
+	
+	// Clear state cookie
+	c.SetCookie("oauth_state", "", -1, "/", "", false, true)
+	
+	// Get authorization code
+	code := c.Query("code")
+	if code == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Authorization code not provided",
+		})
+		return
+	}
+	
+	// Handle OAuth callback
+	tokens, user, err := h.authService.OAuthService.HandleGitHubCallback(c.Request.Context(), code)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": fmt.Sprintf("OAuth authentication failed: %v", err),
+		})
+		return
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
-		"message": "GitHub OAuth callback - to be implemented",
+		"message": "Login successful",
+		"user": gin.H{
+			"id":         user.ID,
+			"email":      user.Email,
+			"first_name": user.FirstName,
+			"last_name":  user.LastName,
+		},
+		"tokens": tokens,
 	})
 }

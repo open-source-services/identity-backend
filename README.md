@@ -8,7 +8,7 @@ A production-ready centralized authentication and user management service built 
 - **Scope-Based Authorization**: Fine-grained permissions with OAuth-style scopes (`users:read`, `products:write`)
 - **Role-Based Access Control**: User roles (user, moderator, admin) with inherited permissions
 - **User Management**: Complete user profile and account management
-- **OAuth Integration**: Ready for Google, GitHub, Microsoft, and Apple Sign-In
+- **OAuth Integration**: Complete Google, GitHub, and Microsoft Sign-In with account linking
 - **Security**: Rate limiting, CORS, bcrypt password hashing, input validation
 - **Database**: PostgreSQL with GORM ORM and automatic migrations
 
@@ -92,6 +92,8 @@ This will start both PostgreSQL and the identity service.
 - `GET /api/v1/auth/oauth/google/callback` - Google OAuth callback
 - `GET /api/v1/auth/oauth/github` - Initiate GitHub OAuth
 - `GET /api/v1/auth/oauth/github/callback` - GitHub OAuth callback
+- `GET /api/v1/auth/oauth/microsoft` - Initiate Microsoft OAuth
+- `GET /api/v1/auth/oauth/microsoft/callback` - Microsoft OAuth callback
 
 ### User Management (Protected)
 
@@ -160,7 +162,11 @@ docker-compose down -v
 | `JWT_EXPIRY` | JWT token expiry | `1h` |
 | `DATABASE_URL` | PostgreSQL connection string | `postgres://...` |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID | - |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | - |
 | `GITHUB_CLIENT_ID` | GitHub OAuth client ID | - |
+| `GITHUB_CLIENT_SECRET` | GitHub OAuth client secret | - |
+| `MICROSOFT_CLIENT_ID` | Microsoft OAuth client ID | - |
+| `MICROSOFT_CLIENT_SECRET` | Microsoft OAuth client secret | - |
 | `RATE_LIMIT_REQUESTS_PER_MINUTE` | Rate limit threshold | `60` |
 
 ## Authorization Examples
@@ -282,6 +288,46 @@ The service automatically creates:
 4. Use meaningful commit messages
 5. Ensure all new endpoints have proper authorization middleware
 
+## OAuth Authentication
+
+Complete OAuth integration with automatic account linking:
+
+### ✅ **Supported Providers**
+- **Google OAuth**: Full profile access with email verification
+- **GitHub OAuth**: Public and private email access
+- **Microsoft OAuth**: Microsoft Graph API integration
+
+### 🔄 **OAuth Flow**
+1. **Initiate**: Call `GET /api/v1/auth/oauth/{provider}` to get authorization URL
+2. **Redirect**: User authorizes on provider's site
+3. **Callback**: Provider redirects to callback endpoint
+4. **Link/Create**: Automatically links to existing users or creates new accounts
+5. **Login**: Returns same JWT tokens as traditional authentication
+
+### 🔧 **Setup OAuth Providers**
+```bash
+# Google OAuth
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+GOOGLE_REDIRECT_URL=https://yourdomain.com/api/v1/auth/oauth/google/callback
+
+# GitHub OAuth
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+GITHUB_REDIRECT_URL=https://yourdomain.com/api/v1/auth/oauth/github/callback
+
+# Microsoft OAuth
+MICROSOFT_CLIENT_ID=your-microsoft-client-id
+MICROSOFT_CLIENT_SECRET=your-microsoft-client-secret
+MICROSOFT_REDIRECT_URL=https://yourdomain.com/api/v1/auth/oauth/microsoft/callback
+```
+
+### 🔒 **OAuth Security Features**
+- **CSRF Protection**: State parameter validation
+- **Account Linking**: Same email automatically links accounts
+- **Email Verification**: OAuth emails considered verified
+- **Consistent Permissions**: OAuth users get same role-based access
+
 ## Cross-Domain Support
 
 This service is designed to work across multiple domains and subdomains:
@@ -318,6 +364,6 @@ See [CROSS_DOMAIN_SETUP.md](./CROSS_DOMAIN_SETUP.md) for detailed integration gu
 - [x] Repository layer for all database operations
 - [x] Security middleware and rate limiting
 - [x] Database migrations and seeding
-- [ ] OAuth provider integrations (placeholders ready)
+- [x] OAuth provider integrations (Google, GitHub, Microsoft)
 - [ ] Comprehensive test coverage
 - [ ] OpenAPI documentation

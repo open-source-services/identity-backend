@@ -13,7 +13,7 @@ type User struct {
 	LastName    string    `json:"last_name"`
 	AvatarURL   string    `json:"avatar_url"`
 	IsActive    bool      `json:"is_active" gorm:"default:true"`
-	IsVerified  bool      `json:"is_verified" gorm:"default:false"`
+	IsEmailVerified bool      `json:"is_email_verified" gorm:"default:false"`
 	LastLoginAt *time.Time `json:"last_login_at"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -28,8 +28,8 @@ type User struct {
 type OAuthAccount struct {
 	ID             uint   `json:"id" gorm:"primaryKey"`
 	UserID         uint   `json:"user_id" gorm:"not null"`
-	Provider       string `json:"provider" gorm:"not null"` // google, github, microsoft, apple
-	ProviderUserID string `json:"provider_user_id" gorm:"not null"`
+	Provider   string `json:"provider" gorm:"not null"` // google, github, microsoft, apple
+	ProviderID string `json:"provider_id" gorm:"not null"`
 	Email          string `json:"email"`
 	Name           string `json:"name"`
 	AvatarURL      string `json:"avatar_url"`
@@ -73,7 +73,7 @@ type UserResponse struct {
 	LastName    string     `json:"last_name"`
 	AvatarURL   string     `json:"avatar_url"`
 	IsActive    bool       `json:"is_active"`
-	IsVerified  bool       `json:"is_verified"`
+	IsEmailVerified bool       `json:"is_email_verified"`
 	LastLoginAt *time.Time `json:"last_login_at"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`
@@ -88,9 +88,16 @@ func (u *User) ToResponse() *UserResponse {
 		LastName:    u.LastName,
 		AvatarURL:   u.AvatarURL,
 		IsActive:    u.IsActive,
-		IsVerified:  u.IsVerified,
+		IsEmailVerified: u.IsEmailVerified,
 		LastLoginAt: u.LastLoginAt,
 		CreatedAt:   u.CreatedAt,
 		UpdatedAt:   u.UpdatedAt,
 	}
+}
+
+// AuthTokens represents the response containing access and refresh tokens
+type AuthTokens struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	ExpiresIn    int64  `json:"expires_in"` // seconds
 }

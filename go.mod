@@ -1,6 +1,8 @@
 module github.com/sharan-industries/identity-service
 
-go 1.21
+go 1.23.0
+
+toolchain go1.24.5
 
 require (
 	github.com/gin-contrib/cors v1.5.0
@@ -8,12 +10,14 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/joho/godotenv v1.4.0
 	golang.org/x/crypto v0.17.0
+	golang.org/x/oauth2 v0.30.0
 	golang.org/x/time v0.5.0
 	gorm.io/driver/postgres v1.5.4
 	gorm.io/gorm v1.25.5
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.3.0 // indirect
 	github.com/bytedance/sonic v1.10.1 // indirect
 	github.com/chenzhuoyu/base64x v0.0.0-20230717121745-296ad89f973d // indirect
 	github.com/chenzhuoyu/iasm v0.9.0 // indirect

@@ -17,6 +17,7 @@ type AuthService struct {
 	userRepo       *repository.UserRepository
 	tokenRepo      *repository.TokenRepository
 	jwtService     *JWTService
+	OAuthService   *OAuthService
 }
 
 // NewAuthService creates a new authentication service
@@ -73,7 +74,7 @@ func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
 		IsActive:  true,
-		IsVerified: false, // Email verification can be added later
+		IsEmailVerified: false, // Email verification can be added later
 	}
 
 	if err := s.userRepo.Create(user); err != nil {
@@ -248,4 +249,42 @@ func (s *AuthService) hashPassword(password string) (string, error) {
 // verifyPassword compares a password with its hash
 func (s *AuthService) verifyPassword(password, hash string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+}
+
+// SetOAuthService sets the OAuth service (used to avoid circular dependency)
+func (s *AuthService) SetOAuthService(oauthService *OAuthService) {
+	s.OAuthService = oauthService
+}
+
+// generateTokensForUser generates JWT tokens for a user (used by OAuth service)
+func (s *AuthService) generateTokensForUser(user *models.User) (*models.AuthTokens, error) {
+	// Get user permissions
+	permissions, err := s.userRepo.GetUserPermissions(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user permissions: %w", err)
+	}
+
+	// Generate access token
+	accessToken, _, err := s.jwtService.GenerateAccessToken(user, permissions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
+	}
+
+	// Generate refresh token
+	refreshToken, err := s.jwtService.GenerateRefreshToken(user.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+	}
+
+	// Store refresh token in database
+	expiresAt := time.Now().Add(s.cfg.RefreshTokenExpiry)
+	if err := s.tokenRepo.CreateRefreshToken(user.ID, refreshToken, expiresAt); err != nil {
+		return nil, fmt.Errorf("failed to store refresh token: %w", err)
+	}
+
+	return &models.AuthTokens{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    int64(s.cfg.JWTExpiry.Seconds()),
+	}, nil
 }
