@@ -1,0 +1,71 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.production
+.env.staging
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/build/
+identity-service
+cmd/server/identity-service
+
+# Go module cache and dependencies
+/vendor/
+go.sum.backup
+
+# Test coverage reports
+*.out
+coverage.html
+coverage.xml
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Log files
+*.log
+logs/
+/tmp/
+
+# Database files (for local development)
+*.db
+*.sqlite
+*.sqlite3
+
+# Docker volumes and data
+/data/
+/postgres-data/
+
+# Temporary files
+/temp/
+/tmp/
+*.tmp
+
+# OS specific files
+Thumbs.db
+.DS_Store
+._*
+
+# Backup files
+*.backup
+*.bak
+
+# Development certificates
+*.pem
+*.key
+*.crt
+*.cert
+
+# Local configuration overrides
+config.local.*
+local.env
