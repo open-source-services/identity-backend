@@ -3,6 +3,8 @@ package services
 import (
 	"fmt"
 	"log"
+	"net/url"
+	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
@@ -32,26 +34,74 @@ func NewAuthService(cfg *config.Config, userRepo *repository.UserRepository, tok
 
 // RegisterRequest represents user registration data
 type RegisterRequest struct {
-	Email     string `json:"email" binding:"required,email"`
-	Password  string `json:"password" binding:"required,min=8"`
-	FirstName string `json:"first_name" binding:"required"`
-	LastName  string `json:"last_name" binding:"required"`
+	Email       string `json:"email" binding:"required,email"`
+	Password    string `json:"password" binding:"required,min=8"`
+	FirstName   string `json:"first_name" binding:"required"`
+	LastName    string `json:"last_name" binding:"required"`
+	RedirectURL string `json:"redirect_url"`
 }
 
 // LoginRequest represents user login data
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email       string `json:"email" binding:"required,email"`
+	Password    string `json:"password" binding:"required"`
+	RedirectURL string `json:"redirect_url"`
 }
 
 // AuthResponse represents authentication response
 type AuthResponse struct {
-	User   *models.UserResponse `json:"user"`
-	Tokens *TokenPair           `json:"tokens"`
+	User        *models.UserResponse `json:"user"`
+	Tokens      *TokenPair           `json:"tokens"`
+	RedirectURL string               `json:"redirect_url,omitempty"`
+}
+
+// validateRedirectURL validates if the redirect URL is allowed
+func (s *AuthService) validateRedirectURL(redirectURL string) error {
+	if redirectURL == "" {
+		return nil // Empty redirect URL is allowed
+	}
+
+	// Parse the URL
+	u, err := url.Parse(redirectURL)
+	if err != nil {
+		return fmt.Errorf("invalid redirect URL format")
+	}
+
+	// Ensure it's a valid HTTP/HTTPS URL
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return fmt.Errorf("redirect URL must use http or https scheme")
+	}
+
+	// Check against allowed origins
+	origin := fmt.Sprintf("%s://%s", u.Scheme, u.Host)
+	
+	// Allow localhost in development
+	if s.cfg.Environment == "development" && (strings.Contains(u.Host, "localhost") || strings.Contains(u.Host, "127.0.0.1")) {
+		return nil
+	}
+
+	// Check against configured allowed origins
+	for _, allowedOrigin := range s.cfg.AllowedOrigins {
+		if origin == strings.TrimSpace(allowedOrigin) {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("redirect URL not allowed: %s", origin)
+}
+
+// ValidateRedirectURL exposes the redirect URL validation for external use
+func (s *AuthService) ValidateRedirectURL(redirectURL string) error {
+	return s.validateRedirectURL(redirectURL)
 }
 
 // Register creates a new user account
 func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
+	// Validate redirect URL if provided
+	if err := s.validateRedirectURL(req.RedirectURL); err != nil {
+		return nil, fmt.Errorf("invalid redirect URL: %w", err)
+	}
+
 	// Check if email already exists
 	exists, err := s.userRepo.EmailExists(req.Email)
 	if err != nil {
@@ -111,13 +161,19 @@ func (s *AuthService) Register(req *RegisterRequest) (*AuthResponse, error) {
 	}
 
 	return &AuthResponse{
-		User:   user.ToResponse(),
-		Tokens: tokens,
+		User:        user.ToResponse(),
+		Tokens:      tokens,
+		RedirectURL: req.RedirectURL,
 	}, nil
 }
 
 // Login authenticates a user and returns tokens
 func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
+	// Validate redirect URL if provided
+	if err := s.validateRedirectURL(req.RedirectURL); err != nil {
+		return nil, fmt.Errorf("invalid redirect URL: %w", err)
+	}
+
 	// Find user by email
 	user, err := s.userRepo.GetByEmail(req.Email)
 	if err != nil {
@@ -166,8 +222,9 @@ func (s *AuthService) Login(req *LoginRequest) (*AuthResponse, error) {
 	}
 
 	return &AuthResponse{
-		User:   user.ToResponse(),
-		Tokens: tokens,
+		User:        user.ToResponse(),
+		Tokens:      tokens,
+		RedirectURL: req.RedirectURL,
 	}, nil
 }
 

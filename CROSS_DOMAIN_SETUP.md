@@ -106,17 +106,24 @@ func validateToken(tokenString string) (*UserClaims, error) {
 
 ## 🌐 **Frontend Integration**
 
-### JavaScript/TypeScript Example
+### JavaScript/TypeScript Example with Redirect Support
 
 ```typescript
 class AuthService {
     private baseURL = 'https://identity-service.mycompany.com/api/v1';
     
-    async login(email: string, password: string) {
+    async login(email: string, password: string, redirectURL?: string) {
+        const body: any = { email, password };
+        
+        // Include redirect URL if provided
+        if (redirectURL) {
+            body.redirect_url = redirectURL;
+        }
+        
         const response = await fetch(`${this.baseURL}/auth/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify(body)
         });
         
         const data = await response.json();
@@ -125,6 +132,12 @@ class AuthService {
             // Store tokens for cross-domain use
             localStorage.setItem('access_token', data.tokens.access_token);
             localStorage.setItem('refresh_token', data.tokens.refresh_token);
+            
+            // Handle redirect URL from response
+            if (data.redirect_url) {
+                window.location.href = data.redirect_url;
+                return;
+            }
         }
         
         return data;

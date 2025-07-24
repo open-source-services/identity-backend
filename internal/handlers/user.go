@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 	"github.com/sharan-industries/identity-service/internal/config"
+	"github.com/sharan-industries/identity-service/internal/models"
 )
 
 type UserHandler struct {
@@ -39,13 +40,28 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement get profile logic
-	// - Fetch user from database
-	// - Return user profile (without sensitive data)
+	// Fetch user from database with roles
+	var user models.User
+	if err := h.db.Preload("Roles").First(&user, userID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "not_found",
+				"message": "User not found",
+			})
+			return
+		}
+		
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "database_error",
+			"message": "Failed to fetch user profile",
+		})
+		return
+	}
 
+	// Return user profile without sensitive data
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Get profile endpoint - to be implemented",
-		"user_id": userID,
+		"data": user.ToResponse(),
+		"message": "Profile retrieved successfully",
 	})
 }
 
@@ -70,15 +86,44 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement update profile logic
-	// - Find user in database
-	// - Update allowed fields
-	// - Return updated profile
+	// Find user in database
+	var user models.User
+	if err := h.db.First(&user, userID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "not_found",
+				"message": "User not found",
+			})
+			return
+		}
+		
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "database_error",
+			"message": "Failed to fetch user",
+		})
+		return
+	}
 
+	// Update allowed fields
+	user.FirstName = req.FirstName
+	user.LastName = req.LastName
+	if req.AvatarURL != "" {
+		user.AvatarURL = req.AvatarURL
+	}
+
+	// Save updates to database
+	if err := h.db.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "database_error",
+			"message": "Failed to update profile",
+		})
+		return
+	}
+
+	// Return updated profile
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Update profile endpoint - to be implemented",
-		"user_id": userID,
-		"data": req,
+		"message": "Profile updated successfully",
+		"data": user.ToResponse(),
 	})
 }
 
@@ -94,13 +139,63 @@ func (h *UserHandler) DeleteAccount(c *gin.Context) {
 		return
 	}
 
-	// TODO: Implement account deletion logic
-	// - Soft delete or hard delete user
-	// - Revoke all tokens
-	// - Clean up associated data
+	// Start a transaction for atomic operations
+	tx := h.db.Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Find user in database
+	var user models.User
+	if err := tx.First(&user, userID).Error; err != nil {
+		tx.Rollback()
+		if err == gorm.ErrRecordNotFound {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error": "not_found",
+				"message": "User not found",
+			})
+			return
+		}
+		
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "database_error",
+			"message": "Failed to fetch user",
+		})
+		return
+	}
+
+	// Revoke all refresh tokens for this user
+	if err := tx.Model(&models.RefreshToken{}).Where("user_id = ?", userID).Update("is_revoked", true).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "database_error",
+			"message": "Failed to revoke tokens",
+		})
+		return
+	}
+
+	// Soft delete the user (preserves data with deleted_at timestamp)
+	if err := tx.Delete(&user).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "database_error",
+			"message": "Failed to delete account",
+		})
+		return
+	}
+
+	// Commit transaction
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "database_error",
+			"message": "Failed to complete account deletion",
+		})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message": "Delete account endpoint - to be implemented",
-		"user_id": userID,
+		"message": "Account deleted successfully",
 	})
 }

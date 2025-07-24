@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/sharan-industries/identity-service/internal/models"
 	"github.com/sharan-industries/identity-service/internal/services"
 )
 
@@ -53,6 +54,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	// Check for redirect_url in query parameter if not in body
+	if req.RedirectURL == "" {
+		req.RedirectURL = c.Query("redirect_url")
+	}
+
 	response, err := h.authService.Register(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -77,6 +83,11 @@ func (h *AuthHandler) Login(c *gin.Context) {
 			"message": err.Error(),
 		})
 		return
+	}
+
+	// Check for redirect_url in query parameter if not in body
+	if req.RedirectURL == "" {
+		req.RedirectURL = c.Query("redirect_url")
 	}
 
 	response, err := h.authService.Login(&req)
@@ -156,8 +167,57 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 
 // OAuth handlers (placeholder implementations)
 
+// handleOAuthCallback handles the common OAuth callback logic for redirecting to frontend
+func (h *AuthHandler) handleOAuthCallback(c *gin.Context, tokens *models.AuthTokens, user *models.User, redirectURL string) {
+	// Construct frontend redirect URL with tokens
+	frontendURL := "http://localhost:3000" // TODO: Make this configurable
+	if redirectURL != "" {
+		frontendURL = redirectURL
+	} else {
+		frontendURL += "/auth/callback"
+	}
+	
+	// Add tokens as query parameters (for frontend to handle)
+	// In production, consider using secure HTTP-only cookies instead
+	redirectURLWithTokens := fmt.Sprintf("%s?access_token=%s&refresh_token=%s&user_id=%d&email=%s&first_name=%s&last_name=%s",
+		frontendURL,
+		tokens.AccessToken,
+		tokens.RefreshToken,
+		user.ID,
+		user.Email,
+		user.FirstName,
+		user.LastName,
+	)
+	
+	// Redirect to frontend
+	c.Redirect(http.StatusTemporaryRedirect, redirectURLWithTokens)
+}
+
 func (h *AuthHandler) GoogleOAuth(c *gin.Context) {
 	state := generateOAuthState()
+	
+	// Check for redirect_url parameter and include it in state
+	redirectURL := c.Query("redirect_url")
+	if redirectURL != "" {
+		// Validate redirect URL
+		if err := h.authService.ValidateRedirectURL(redirectURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("invalid redirect URL: %v", err),
+			})
+			return
+		}
+		// Store redirect URL in a separate cookie
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     "oauth_redirect_url",
+			Value:    redirectURL,
+			MaxAge:   300, // 5 minutes
+			Path:     "/",
+			Domain:   "",
+			Secure:   false,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
 	
 	// Set cookie with explicit SameSite=Lax for OAuth redirects
 	http.SetCookie(c.Writer, &http.Cookie{
@@ -196,8 +256,12 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 		return
 	}
 	
-	// Clear state cookie
+	// Get stored redirect URL
+	redirectURL, _ := c.Cookie("oauth_redirect_url")
+	
+	// Clear cookies
 	c.SetCookie("oauth_state", "", -1, "/", "", false, true)
+	c.SetCookie("oauth_redirect_url", "", -1, "/", "", false, true)
 	
 	// Get authorization code
 	code := c.Query("code")
@@ -217,20 +281,35 @@ func (h *AuthHandler) GoogleCallback(c *gin.Context) {
 		return
 	}
 	
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Login successful",
-		"user": gin.H{
-			"id":         user.ID,
-			"email":      user.Email,
-			"first_name": user.FirstName,
-			"last_name":  user.LastName,
-		},
-		"tokens": tokens,
-	})
+	// Handle OAuth callback redirect
+	h.handleOAuthCallback(c, tokens, user, redirectURL)
 }
 
 func (h *AuthHandler) MicrosoftOAuth(c *gin.Context) {
 	state := generateOAuthState()
+	
+	// Check for redirect_url parameter and include it in state
+	redirectURL := c.Query("redirect_url")
+	if redirectURL != "" {
+		// Validate redirect URL
+		if err := h.authService.ValidateRedirectURL(redirectURL); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error": fmt.Sprintf("invalid redirect URL: %v", err),
+			})
+			return
+		}
+		// Store redirect URL in a separate cookie
+		http.SetCookie(c.Writer, &http.Cookie{
+			Name:     "oauth_redirect_url",
+			Value:    redirectURL,
+			MaxAge:   300, // 5 minutes
+			Path:     "/",
+			Domain:   "",
+			Secure:   false,
+			HttpOnly: true,
+			SameSite: http.SameSiteLaxMode,
+		})
+	}
 	
 	// Set cookie with explicit SameSite=Lax for OAuth redirects
 	http.SetCookie(c.Writer, &http.Cookie{
