@@ -1,4 +1,4 @@
-# Identity Service
+# Identity Backend
 
 A production-ready centralized authentication and user management service built with Go and Gin framework. This service provides Single Sign-On (SSO) capabilities across multiple company products with comprehensive scope-based authorization.
 
