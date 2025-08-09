@@ -13,9 +13,9 @@ type Config struct {
 	Environment string
 
 	// JWT config
-	JWTSecret           string
-	JWTExpiry           time.Duration
-	RefreshTokenExpiry  time.Duration
+	JWTSecret          string
+	JWTExpiry          time.Duration
+	RefreshTokenExpiry time.Duration
 
 	// Database config
 	DatabaseURL string
@@ -40,8 +40,8 @@ type Config struct {
 	RateLimitRequestsPerMinute int
 
 	// Cross-domain config
-	CookieDomain               string
-	AllowedOrigins             []string
+	CookieDomain   string
+	AllowedOrigins []string
 }
 
 func Load() *Config {
@@ -53,7 +53,7 @@ func Load() *Config {
 		JWTExpiry:          parseDuration(getEnv("JWT_EXPIRY", "1h")),
 		RefreshTokenExpiry: parseDuration(getEnv("REFRESH_TOKEN_EXPIRY", "168h")), // 7 days
 
-		DatabaseURL: getEnv("DATABASE_URL", "postgres://identity_user:identity_password@localhost:5432/identity_service?sslmode=disable"),
+		DatabaseURL: getEnv("DATABASE_URL", "postgres://username:password@localhost:5432/identity_service?sslmode=disable"),
 
 		GoogleClientID:     getEnv("GOOGLE_CLIENT_ID", ""),
 		GoogleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),

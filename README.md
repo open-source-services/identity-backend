@@ -39,7 +39,7 @@ A production-ready centralized authentication and user management service built 
    
    Edit `.env` file with your configuration:
    ```env
-   DATABASE_URL=postgres://identity_user:identity_password@localhost:5432/identity_service?sslmode=disable
+   DATABASE_URL=postgres://username:password@localhost:5432/identity_service?sslmode=disable
    JWT_SECRET=your-super-secret-jwt-key-change-in-production
    PORT=8080
    ENVIRONMENT=development
