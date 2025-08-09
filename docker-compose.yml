@@ -6,14 +6,14 @@ services:
     container_name: identity-postgres
     environment:
       POSTGRES_DB: identity_service
-      POSTGRES_USER: identity_user
-      POSTGRES_PASSWORD: identity_password
+      POSTGRES_USER: username
+      POSTGRES_PASSWORD: password
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U identity_user -d identity_service"]
+      test: ["CMD-SHELL", "pg_isready -U username -d identity_service"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -24,7 +24,7 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DATABASE_URL: postgres://identity_user:identity_password@postgres:5432/identity_service?sslmode=disable
+      DATABASE_URL: postgres://username:password@postgres:5432/identity_service?sslmode=disable
       JWT_SECRET: dev-jwt-secret-key-change-in-production
       ENVIRONMENT: development
     depends_on:
